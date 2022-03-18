@@ -218,6 +218,11 @@ static int dmz_get_bdev_model(struct dmz_block_dev *bdev)
 	return 0;
 }
 
+static int is_power_of_2(unsigned long n)
+{
+	return (n != 0 && ((n & (n - 1)) == 0));
+}
+
 /*
  * Get device capacity and zone size.
  */
@@ -226,6 +231,7 @@ static int dmz_get_bdev_capacity(struct dmz_block_dev *bdev)
 	char str[128];
 	FILE *file;
 	int res;
+	uint32_t zone_size;
 
 	/* Get capacity */
 	if (ioctl(bdev->fd, BLKGETSIZE64, &bdev->capacity) < 0) {
@@ -266,6 +272,15 @@ static int dmz_get_bdev_capacity(struct dmz_block_dev *bdev)
 			bdev->path);
 		return -1;
 	}
+
+	zone_size = bdev->zone_nr_sectors << 9;
+	if (!is_power_of_2(zone_size)) {
+		fprintf(stderr,
+			"%s: zone size size (%u) must be a power of 2\n",
+			bdev->path, zone_size);
+		return -1;
+	}
+
 	bdev->zone_nr_blocks = dmz_sect2blk(bdev->zone_nr_sectors);
 
 	/* Get number of zones */
